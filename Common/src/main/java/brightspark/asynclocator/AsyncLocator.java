@@ -18,46 +18,59 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 public class AsyncLocator {
-	private static ExecutorService LOCATING_EXECUTOR_SERVICE = null;
+	private static volatile ExecutorService LOCATING_EXECUTOR_SERVICE = null;
+	private static final AtomicInteger POOL_COUNTER = new AtomicInteger(1);
 
 	private AsyncLocator() {}
 
+	// Initializes the singleton executor for locating tasks
 	public static void setupExecutorService() {
-		shutdownExecutorService();
+		synchronized (AsyncLocator.class) {
+			shutdownExecutorService();
 
-		int threads = Services.CONFIG.locatorThreads();
-		ALConstants.logInfo("Starting locating executor service with thread pool size of {}", threads);
-		LOCATING_EXECUTOR_SERVICE = Executors.newFixedThreadPool(
-			threads,
-			new ThreadFactory() {
-				private static final AtomicInteger poolNum = new AtomicInteger(1);
-				private final AtomicInteger threadNum = new AtomicInteger(1);
-				private final String namePrefix = ALConstants.MOD_ID + "-" + poolNum.getAndIncrement() + "-thread-";
+			int threads = Services.CONFIG.locatorThreads();
+			if (threads <= 0) {
+				ALConstants.logWarn("Configured locatorThreads <= 0 ({}). Falling back to 1 thread", threads);
+				threads = 1;
+			}
+			ALConstants.logInfo("Starting locating executor service with thread pool size of {}", threads);
 
-				@Override
-				public Thread newThread(@NotNull Runnable r) {
+			final String namePrefix = ALConstants.MOD_ID + "-" + POOL_COUNTER.getAndIncrement() + "-thread-";
+			final AtomicInteger threadNum = new AtomicInteger(1);
+
+			LOCATING_EXECUTOR_SERVICE = Executors.newFixedThreadPool(
+				threads,
+				r -> {
 					Thread t = new Thread(r, namePrefix + threadNum.getAndIncrement());
 					t.setDaemon(true);
+					t.setUncaughtExceptionHandler((th, e) -> ALConstants.logError(e, "Uncaught exception in locating thread {}", th.getName()));
 					return t;
 				}
-			}
-		);
+			);
+		}
 	}
 
 	public static void shutdownExecutorService() {
-		if (LOCATING_EXECUTOR_SERVICE != null) {
-			ALConstants.logInfo("Shutting down locating executor service");
-			LOCATING_EXECUTOR_SERVICE.shutdown();
-			try {
-				if (!LOCATING_EXECUTOR_SERVICE.awaitTermination(2, TimeUnit.SECONDS)) {
+		synchronized (AsyncLocator.class) {
+			if (LOCATING_EXECUTOR_SERVICE != null) {
+				ALConstants.logInfo("Shutting down locating executor service");
+				LOCATING_EXECUTOR_SERVICE.shutdown();
+				try {
+					if (!LOCATING_EXECUTOR_SERVICE.awaitTermination(5, TimeUnit.SECONDS)) { // i think 5 seconds is better
+						LOCATING_EXECUTOR_SERVICE.shutdownNow();
+					}
+				} catch (InterruptedException ie) {
 					LOCATING_EXECUTOR_SERVICE.shutdownNow();
+					Thread.currentThread().interrupt();
 				}
-			} catch (InterruptedException ie) {
-				LOCATING_EXECUTOR_SERVICE.shutdownNow();
-				Thread.currentThread().interrupt();
+				LOCATING_EXECUTOR_SERVICE = null;
 			}
-			LOCATING_EXECUTOR_SERVICE = null;
 		}
+	}
+
+	private static boolean isExecutorActive() {
+		ExecutorService es = LOCATING_EXECUTOR_SERVICE;
+		return es != null && !es.isShutdown() && !es.isTerminated();
 	}
 
 	/**
@@ -75,6 +88,12 @@ public class AsyncLocator {
 			"Creating locate task for {} in {} around {} within {} chunks",
 			structureTag, level, pos, searchRadius
 		);
+
+		if (!isExecutorActive()) {
+			ALConstants.logWarn("Locating executor service not initialized or not active: creating lazily");
+			setupExecutorService();
+		}
+
 		CompletableFuture<BlockPos> completableFuture = new CompletableFuture<>();
 		Future<?> future = LOCATING_EXECUTOR_SERVICE.submit(
 			() -> doLocateLevel(completableFuture, level, structureTag, pos, searchRadius, skipKnownStructures)
@@ -98,6 +117,12 @@ public class AsyncLocator {
 			"Creating locate task for {} in {} around {} within {} chunks",
 			structureSet, level, pos, searchRadius
 		);
+
+		if (!isExecutorActive()) {
+			ALConstants.logWarn("Locating executor service not initialized or not active: creating lazily");
+			setupExecutorService();
+		}
+
 		CompletableFuture<Pair<BlockPos, Holder<Structure>>> completableFuture = new CompletableFuture<>();
 		Future<?> future = LOCATING_EXECUTOR_SERVICE.submit(
 			() -> doLocateChunkGenerator(completableFuture, level, structureSet, pos, searchRadius, skipKnownStructures)
@@ -113,18 +138,26 @@ public class AsyncLocator {
 		int searchRadius,
 		boolean skipExistingChunks
 	) {
-		ALConstants.logInfo(
-			"Trying to locate {} in {} around {} within {} chunks",
-			structureTag, level, pos, searchRadius
-		);
-		long start = System.nanoTime();
-		BlockPos foundPos = level.findNearestMapStructure(structureTag, pos, searchRadius, skipExistingChunks);
-		String time = NumberFormat.getNumberInstance().format(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-		if (foundPos == null)
-			ALConstants.logInfo("No {} found (took {}ms)", structureTag, time);
-		else
-			ALConstants.logInfo("Found {} at {} (took {}ms)", structureTag, foundPos, time);
-		completableFuture.complete(foundPos);
+		try {
+			ALConstants.logInfo(
+				"Trying to locate {} in {} around {} within {} chunks",
+				structureTag, level, pos, searchRadius
+			);
+			long start = System.nanoTime();
+			BlockPos foundPos = level.findNearestMapStructure(structureTag, pos, searchRadius, skipExistingChunks);
+			String time = NumberFormat.getNumberInstance().format(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+			if (foundPos == null)
+				ALConstants.logInfo("No {} found (took {}ms)", structureTag, time);
+			else
+				ALConstants.logInfo("Found {} at {} (took {}ms)", structureTag, foundPos, time);
+			completableFuture.complete(foundPos);
+		} catch (Throwable t) {
+			ALConstants.logError(t, "Exception while locating {} around {}", structureTag, pos);
+			try {
+				completableFuture.complete(null);
+			} catch (Throwable ignore) {
+			}
+		}
 	}
 
 	private static void doLocateChunkGenerator(
@@ -135,21 +168,29 @@ public class AsyncLocator {
 		int searchRadius,
 		boolean skipExistingChunks
 	) {
-		ALConstants.logInfo(
-			"Trying to locate {} in {} around {} within {} chunks",
-			structureSet, level, pos, searchRadius
-		);
-		long start = System.nanoTime();
-		Pair<BlockPos, Holder<Structure>> foundPair = level.getChunkSource().getGenerator()
-			.findNearestMapStructure(level, structureSet, pos, searchRadius, skipExistingChunks);
-		String time = NumberFormat.getNumberInstance().format(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
-		if (foundPair == null)
-			ALConstants.logInfo("No {} found (took {}ms)", structureSet, time);
-		else
-			ALConstants.logInfo("Found {} at {} (took {}ms)",
-				foundPair.getSecond().value().getClass().getSimpleName(), foundPair.getFirst(), time
+		try {
+			ALConstants.logInfo(
+				"Trying to locate {} in {} around {} within {} chunks",
+				structureSet, level, pos, searchRadius
 			);
-		completableFuture.complete(foundPair);
+			long start = System.nanoTime();
+			Pair<BlockPos, Holder<Structure>> foundPair = level.getChunkSource().getGenerator()
+				.findNearestMapStructure(level, structureSet, pos, searchRadius, skipExistingChunks);
+			String time = NumberFormat.getNumberInstance().format(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+			if (foundPair == null)
+				ALConstants.logInfo("No {} found (took {}ms)", structureSet, time);
+			else
+				ALConstants.logInfo("Found {} at {} (took {}ms)",
+					foundPair.getSecond().value().getClass().getSimpleName(), foundPair.getFirst(), time
+				);
+			completableFuture.complete(foundPair);
+		} catch (Throwable t) {
+			ALConstants.logError(t, "Exception while locating {} around {}", structureSet, pos);
+			try {
+				completableFuture.complete(null);
+			} catch (Throwable ignore) {
+			}
+		}
 	}
 
 	/**
