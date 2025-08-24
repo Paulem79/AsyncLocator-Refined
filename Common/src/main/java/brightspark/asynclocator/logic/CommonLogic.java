@@ -1,6 +1,5 @@
 package brightspark.asynclocator.logic;
 
-import brightspark.asynclocator.ALConstants;
 import brightspark.asynclocator.ALDataComponents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
@@ -15,7 +14,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.MapItem;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.world.item.component.MapDecorations;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.saveddata.maps.MapDecorationType;
@@ -140,20 +138,6 @@ public class CommonLogic {
 		}
 		
 	clearPendingState(mapStack);
-		
-		mapStack.remove(ALDataComponents.LOCATING);
-		
-		CustomData currentData = mapStack.get(DataComponents.CUSTOM_DATA);
-		if (currentData != null) {
-			CompoundTag newTag = currentData.copyTag();
-			newTag.remove(PENDING_MARKER);
-			newTag.remove(UUID_TRACKER);
-			if (newTag.isEmpty()) {
-				mapStack.remove(DataComponents.CUSTOM_DATA);
-			} else {
-				mapStack.set(DataComponents.CUSTOM_DATA, CustomData.of(newTag));
-			}
-		}
 	}
 
 	// Legacy method for compatibility, delegates to finalizeMap
