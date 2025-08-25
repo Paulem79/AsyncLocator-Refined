@@ -44,7 +44,7 @@ public class AsyncLocatorConfigFabric {
 		)
 		public static boolean EYE_OF_ENDER_ENABLED = true;
 		@Config(
-			value = "explorationMspEnabled",
+			value = "explorationMapEnabled",
 			comment = "If true, enables asynchronous locating of structures for exploration maps found in chests."
 		)
 		public static boolean EXPLORATION_MAP_ENABLED = true;

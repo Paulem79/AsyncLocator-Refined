@@ -6,6 +6,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.maps.MapDecorationType;
+import org.jetbrains.annotations.Nullable;
 
 public interface ExplorationMapFunctionLogicHelper {
 	void invalidateMap(ItemStack mapStack, ServerLevel level, BlockPos invPos);
@@ -22,6 +23,6 @@ public interface ExplorationMapFunctionLogicHelper {
 		int scale,
 		Holder<MapDecorationType> destinationTypeHolder,
 		BlockPos invPos,
-		Component displayName
+		@Nullable Component displayName
 	);
 }
