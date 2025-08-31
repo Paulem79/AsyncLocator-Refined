@@ -13,13 +13,14 @@ public class AsyncLocatorConfigFabric {
 		value = "asyncLocatorThreads",
 		comment = """
 			The maximum number of threads in the async locator thread pool.
-			There's no upper bound to this, however this should only be increased if you're experiencing
+			There's an upper limit of 64. This should only be increased if you're experiencing
 			simultaneous location lookups causing issues AND you have the hardware capable of handling
 			the extra possible threads.
 			The default of 1 should be suitable for most users.
+			This value must not exceed 64.
 			""",
 		min = 1,
-		max = Integer.MAX_VALUE
+		max = 64 // Practically in no case will you need the maximum amount
 	)
 	public static int LOCATOR_THREADS = 1;
 	@Config(
@@ -69,6 +70,27 @@ public class AsyncLocatorConfigFabric {
 			ALConstants.logInfo("Config file found");
 			try {
 				SparkConfig.read(configFile, AsyncLocatorConfigFabric.class);
+			} catch (IllegalStateException e) {
+				// SparkConfig throws this when value is out of range
+				if (e.getMessage().contains("greater than the maximum") || 
+					e.getMessage().contains("less than the minimum")) {
+					ALConstants.logError(
+						"Invalid config value detected: {}. Resetting to defaults and recreating config.",
+						e.getMessage()
+					);
+					
+					LOCATOR_THREADS = 1;
+					
+					// Rewrite config with defaults
+					try {
+						SparkConfig.write(configFile, AsyncLocatorConfigFabric.class);
+						ALConstants.logInfo("Config file rewrite with default threads value");
+					} catch (IOException | IllegalAccessException writeError) {
+						ALConstants.logError(writeError, "Failed to rewrite cpnfig file");
+					}
+				} else {
+					ALConstants.logError(e, "Failed to read config file, using defaults");
+				}
 			} catch (IOException | IllegalAccessException e) {
 				ALConstants.logError(e, "Failed to read config file {}", configFile);
 			}

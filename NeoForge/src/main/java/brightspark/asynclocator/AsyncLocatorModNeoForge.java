@@ -16,12 +16,14 @@ public class AsyncLocatorModNeoForge {
 		NeoForgeDataComponents.register(modEventBus);
 
 		modContainer.registerConfig(
-			ModConfig.Type.SERVER,
-			AsyncLocatorConfigNeoForge.SPEC
+			ModConfig.Type.COMMON,
+			AsyncLocatorConfigNeoForge.SPEC,
+			ALConstants.MOD_ID + ".toml"
 		);
 
 		modEventBus.addListener((ModConfigEvent.Loading event) -> {
 			if (event.getConfig().getSpec() == AsyncLocatorConfigNeoForge.SPEC) {
+				AsyncLocatorConfigNeoForge.validateConfig();
 				AsyncLocatorModCommon.printConfigs();
 			}
 		});
@@ -29,6 +31,7 @@ public class AsyncLocatorModNeoForge {
 		modEventBus.addListener((ModConfigEvent.Reloading event) -> {
 			if (event.getConfig().getSpec() == AsyncLocatorConfigNeoForge.SPEC) {
 				ALConstants.logInfo("Config reloaded");
+				AsyncLocatorConfigNeoForge.validateConfig();
 				AsyncLocatorModCommon.printConfigs();
 				if (AsyncLocator.isExecutorActive()) {
 					AsyncLocator.setupExecutorService();

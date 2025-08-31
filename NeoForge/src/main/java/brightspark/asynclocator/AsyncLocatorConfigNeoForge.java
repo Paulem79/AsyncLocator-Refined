@@ -22,12 +22,13 @@ public class AsyncLocatorConfigNeoForge {
 				.worldRestart()
 				.comment(
 					"The maximum number of threads in the async locator thread pool.",
-					"There's no upper bound to this, however this should only be increased if you're experiencing",
+					"There's an upper limit of 64. This should only be increased if you're experiencing",
 					"simultaneous location lookups causing issues AND you have the hardware capable of handling",
 					"the extra possible threads.",
-					"The default of 1 should be suitable for most users."
+					"The default of 1 should be suitable for most users.",
+					"This value must not exceed 64."
 					)
-					.defineInRange("asyncLocatorThreads", 1, 1, Integer.MAX_VALUE);
+					.defineInRange("asyncLocatorThreads", 1, 1, 64); // Practically in no case will you need the maximum amount
 				REMOVE_OFFER = builder
 					.comment(
 						"When a merchant's treasure map offer ends up not finding a feature location,",
@@ -54,4 +55,25 @@ public class AsyncLocatorConfigNeoForge {
 				builder.pop();
 				SPEC = builder.build();
 			}
+
+	// Add validation method
+	public static void validateConfig() {
+		int threads = LOCATOR_THREADS.get();
+
+		if (threads == MAX_THREADS) {
+			ALConstants.logWarn(
+				"Thread count is at maximum ({}). If you entered a higher value, it will be reset to default.",
+				MAX_THREADS
+			);
+		}
+		
+		if (threads > MAX_THREADS || threads < 1) {
+			ALConstants.logError(
+				"Invalid locatorThreads value ({}). Must be between 1-64. Resetting to default ({}).",
+				threads, DEFAULT_THREADS
+			);
+			LOCATOR_THREADS.set(DEFAULT_THREADS);
+			LOCATOR_THREADS.save();
+		}
+	}
 	}
