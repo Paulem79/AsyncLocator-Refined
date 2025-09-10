@@ -11,4 +11,9 @@ public interface LocateCommandAccess {
 	static DynamicCommandExceptionType getErrorFailed() {
 		throw new UnsupportedOperationException();
 	}
+	
+	@Accessor("ERROR_BIOME_NOT_FOUND")
+	static DynamicCommandExceptionType getErrorBiomeNotFound() {
+		throw new UnsupportedOperationException();
+	}
 }

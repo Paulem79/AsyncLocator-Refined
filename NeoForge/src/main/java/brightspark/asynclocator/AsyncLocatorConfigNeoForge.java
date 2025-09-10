@@ -7,9 +7,14 @@ public class AsyncLocatorConfigNeoForge {
 
 	private static final int DEFAULT_THREADS = 1;
 	private static final int MAX_THREADS = 64;
+	
+	private static final int DEFAULT_BIOME_RADIUS = 6400;
+	private static final int MIN_BIOME_RADIUS = 1600;
+	private static final int MAX_BIOME_RADIUS = 12800;
 
 	public static ModConfigSpec SPEC;
 	public static ConfigValue<Integer> LOCATOR_THREADS;
+	public static ConfigValue<Integer> BIOME_SEARCH_RADIUS;
 	public static ConfigValue<Boolean> REMOVE_OFFER;
 
 	// Feature toggles
@@ -17,6 +22,7 @@ public class AsyncLocatorConfigNeoForge {
 	public static ConfigValue<Boolean> EYE_OF_ENDER_ENABLED;
 	public static ConfigValue<Boolean> EXPLORATION_MAP_ENABLED;
 	public static ConfigValue<Boolean> LOCATE_COMMAND_ENABLED;
+	public static ConfigValue<Boolean> LOCATE_BIOME_COMMAND_ENABLED;
 	public static ConfigValue<Boolean> VILLAGER_TRADE_ENABLED;
 
 	static {
@@ -45,7 +51,15 @@ public class AsyncLocatorConfigNeoForge {
 				
 						return true;
 					});
-			
+
+				BIOME_SEARCH_RADIUS = builder
+					.comment(
+						"Maximum search radius in blocks for /locate biome command.",
+						"The vanilla value is 6400.",
+						"It is not recommended to change the value unless you want to test something or have some issue."
+					)
+					.defineInRange("biomeSearchRadius", DEFAULT_BIOME_RADIUS, MIN_BIOME_RADIUS, MAX_BIOME_RADIUS);
+
 				REMOVE_OFFER = builder
 					.comment(
 						"When a merchant's treasure map offer ends up not finding a feature location,",
@@ -66,6 +80,9 @@ public class AsyncLocatorConfigNeoForge {
 				LOCATE_COMMAND_ENABLED = builder
 					.comment("If true, enables asynchronous locating of structures for the locate command.")
 					.define("locateCommandEnabled", true);
+				LOCATE_BIOME_COMMAND_ENABLED = builder
+					.comment("If true, enables asynchronous locating of biomes for the locate command.")
+					.define("locateBiomeCommandEnabled", true);
 				VILLAGER_TRADE_ENABLED = builder
 					.comment("If true, enables asynchronous locating of structures for villager trades.")
 					.define("villagerTradeEnabled", true);
@@ -75,16 +92,31 @@ public class AsyncLocatorConfigNeoForge {
 
 	// Add validation method
 	public static void validateConfig() {
-		// This method can be used for additional runtime checks if needed
+		boolean needsSave = false;
+		
 		int threads = LOCATOR_THREADS.get();
 		if (threads < 1 || threads > MAX_THREADS) {
-			// This shouldn't happen with the validator, but just in case
 			ALConstants.logError(
 				"Invalid locatorThreads value ({}). Must be between 1-64. Resetting to default ({}).",
-				threads
+				threads, MAX_THREADS, DEFAULT_THREADS
 			);
 			LOCATOR_THREADS.set(DEFAULT_THREADS);
-			LOCATOR_THREADS.save();
+			needsSave = true;
+		}
+		
+		int biomeRadius = BIOME_SEARCH_RADIUS.get();
+		if (biomeRadius < MIN_BIOME_RADIUS || biomeRadius > MAX_BIOME_RADIUS) {
+			ALConstants.logError(
+				"Invalid biomeSearchRadius value ({}). Must be between {}-{}. Resetting to default ({}).",
+				biomeRadius, MIN_BIOME_RADIUS, MAX_BIOME_RADIUS, DEFAULT_BIOME_RADIUS
+			);
+			BIOME_SEARCH_RADIUS.set(DEFAULT_BIOME_RADIUS);
+			needsSave = true;
+		}
+		
+		if (needsSave) {
+			SPEC.save();
+			ALConstants.logInfo("Config values corrected and saved");
 		}
 	}
 	}

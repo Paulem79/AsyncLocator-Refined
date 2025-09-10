@@ -7,6 +7,12 @@ public interface ConfigHelper {
 	int locatorThreads();
 
 	/**
+	 * The maximum search radius for the /locate biome command.
+	 */
+
+	int biomeSearchRadius();
+
+	/**
 	 * When a merchant's treasure map offer ends up not finding a feature location, whether the offer should be removed
 	 * or marked as out of stock.
 	 */
@@ -31,6 +37,11 @@ public interface ConfigHelper {
 	 * If true, enables asynchronous locating of structures for the locate command.
 	 */
 	boolean locateCommandEnabled();
+
+	/**
+	 * If true, enables asynchronous locating of biomes for the locate command.
+	 */
+	boolean locateBiomeCommandEnabled();
 
 	/**
 	 * If true, enables asynchronous locating of structures for villager trades.

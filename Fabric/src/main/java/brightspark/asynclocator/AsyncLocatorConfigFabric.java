@@ -13,6 +13,9 @@ public class AsyncLocatorConfigFabric {
 	private static final int DEFAULT_THREADS = 1;
 	private static final int MAX_THREADS = 64;
 
+	private static final int DEFAULT_BIOME_RADIUS = 6400;
+	private static final int MIN_BIOME_RADIUS = 1600;
+	private static final int MAX_BIOME_RADIUS = 12800;
 	@Config(
 		value = "asyncLocatorThreads",
 		comment = """
@@ -27,6 +30,17 @@ public class AsyncLocatorConfigFabric {
 		max = MAX_THREADS // Practically in no case will you need the maximum amount
 	)
 	public static int LOCATOR_THREADS = 1;
+	@Config(
+		value = "biomeSearchRadius",
+		comment = """
+			Maximum search radius in blocks for /locate biome command.
+			The vanilla value is 6400.
+			It is not recommended to change the value unless you want to test something or have some issue.
+			""",
+		min = MIN_BIOME_RADIUS,
+		max = MAX_BIOME_RADIUS
+	)
+	public static int BIOME_SEARCH_RADIUS = DEFAULT_BIOME_RADIUS;
 	@Config(
 		value = "removeMerchantInvalidMapOffer",
 		comment = """
@@ -59,6 +73,11 @@ public class AsyncLocatorConfigFabric {
 		)
 		public static boolean LOCATE_COMMAND_ENABLED = true;
 		@Config(
+			value = "locateBiomeCommandEnabled",
+			comment = "If true, enables asynchronous locating of biomes for the locate command."
+		)
+		public static boolean LOCATE_BIOME_COMMAND_ENABLED = true;
+		@Config(
 			value = "villagerTradeEnabled",
 			comment = "If true, enables asynchronous locating of structures for villager trades."
 		)
@@ -70,11 +89,13 @@ public class AsyncLocatorConfigFabric {
 	//Helper method
 	private static void resetToDefaults() {
 		LOCATOR_THREADS = DEFAULT_THREADS;
+		BIOME_SEARCH_RADIUS = DEFAULT_BIOME_RADIUS;
 		REMOVE_OFFER = false;
 		FeatureToggles.DOLPHIN_TREASURE_ENABLED = true;
 		FeatureToggles.EYE_OF_ENDER_ENABLED = true;
 		FeatureToggles.EXPLORATION_MAP_ENABLED = true;
 		FeatureToggles.LOCATE_COMMAND_ENABLED = true;
+		FeatureToggles.LOCATE_BIOME_COMMAND_ENABLED = true;
 		FeatureToggles.VILLAGER_TRADE_ENABLED = true;
 	}
 
@@ -86,33 +107,44 @@ public class AsyncLocatorConfigFabric {
 			try {
 				SparkConfig.read(configFile, AsyncLocatorConfigFabric.class);
 
-				// in case of manual edits
+				// Validate values in case of manual edits
+				boolean needsRewrite = false;
+				
 				if (LOCATOR_THREADS > MAX_THREADS || LOCATOR_THREADS < 1) {
 					ALConstants.logError(
 							"Invalid locatorThreads value ({}). Must be between 1-64. Resetting to default ({}).",
 							LOCATOR_THREADS, DEFAULT_THREADS
 					);
 					LOCATOR_THREADS = DEFAULT_THREADS;
-
+					needsRewrite = true;
+				}
+				
+				if (BIOME_SEARCH_RADIUS > MAX_BIOME_RADIUS || BIOME_SEARCH_RADIUS < MIN_BIOME_RADIUS) {
+					ALConstants.logError(
+							"Invalid biomeSearchRadius value ({}). Must be between {}-{}. Resetting to default ({}).",
+							BIOME_SEARCH_RADIUS, MIN_BIOME_RADIUS, MAX_BIOME_RADIUS, DEFAULT_BIOME_RADIUS
+					);
+					BIOME_SEARCH_RADIUS = DEFAULT_BIOME_RADIUS;
+					needsRewrite = true;
+				}
+				
+				if (needsRewrite) {
 					try {
 						SparkConfig.write(configFile, AsyncLocatorConfigFabric.class);
-						ALConstants.logInfo("Config file rewritten with default threads value");
+						ALConstants.logInfo("Config file rewritten with default values");
 					} catch (IOException | IllegalAccessException writeError) {
 						ALConstants.logError(writeError, "Failed to rewrite config file");
 					}
 				}
 
 			} catch (IllegalStateException e) {
-				// SparkConfig throws this when value is out of range
 				if (e.getMessage().contains("greater than the maximum") ||
 						e.getMessage().contains("less than the minimum")) {
 					ALConstants.logError(
 							"Invalid config value detected: {}. Resetting to defaults and recreating config.",
 							e.getMessage()
 					);
-
-					LOCATOR_THREADS = DEFAULT_THREADS;
-
+					resetToDefaults();
 
 					// Rewrite config with defaults
 					try {

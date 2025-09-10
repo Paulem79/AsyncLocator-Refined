@@ -2,12 +2,14 @@ package brightspark.asynclocator;
 
 import brightspark.asynclocator.platform.Services;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.commands.arguments.ResourceOrTagArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.Structure;
 
@@ -202,6 +204,80 @@ public class AsyncLocator {
 			completableFuture.complete(foundPair);
 		} catch (Throwable t) {
 			ALConstants.logError(t, "Exception while locating {} around {}", structureSet, pos);
+			try {
+				completableFuture.complete(null);
+			} catch (Throwable ignore) {
+			}
+		}
+	}
+
+	// Queues a task to locate a biome and returns a {@link LocateTask} with the futures for it.
+	public static LocateTask<Pair<BlockPos, Holder<Biome>>> locateBiome(
+		ServerLevel level,
+		ResourceOrTagArgument.Result<Biome> biomeResult,
+		BlockPos pos,
+		int searchRadius,
+		int horizontalStep,
+		int verticalStep
+	) {
+		ALConstants.logDebug(
+			"Creating locate task for biomes {} in {} around {} within {} blocks",
+			biomeResult.asPrintable(), level, pos, searchRadius
+		);
+
+		ExecutorService executor;
+		synchronized (AsyncLocator.class) {
+			executor = LOCATING_EXECUTOR_SERVICE;
+			if (executor == null || executor.isShutdown()) {
+				ALConstants.logWarn("Locating executor service not initialized or not active: creating lazily");
+				setupExecutorService();
+				executor = LOCATING_EXECUTOR_SERVICE;
+			}
+		}
+
+		CompletableFuture<Pair<BlockPos, Holder<Biome>>> completableFuture = new CompletableFuture<>();
+		Future<?> future = executor.submit(
+			() -> doLocateBiome(completableFuture, level, biomeResult, pos, searchRadius, horizontalStep, verticalStep)
+		);
+		return new LocateTask<>(level.getServer(), completableFuture, future);
+	}
+
+	private static void doLocateBiome(
+		CompletableFuture<Pair<BlockPos, Holder<Biome>>> completableFuture,
+		ServerLevel level,
+		ResourceOrTagArgument.Result<Biome> biomeResult,
+		BlockPos pos,
+		int searchRadius,
+		int horizontalStep,
+		int verticalStep
+	) {
+		try {
+			ALConstants.logDebug(
+				"Trying to locate biomes {} in {} around {} within {} blocks",
+				biomeResult.asPrintable(), level, pos, searchRadius
+			);
+			long start = System.nanoTime();
+
+			// Call the vanilla method with result directly
+			Pair<BlockPos, Holder<Biome>> foundPair = level.findClosestBiome3d(
+				biomeResult,
+				pos,
+				searchRadius,
+				horizontalStep,
+				verticalStep
+			);
+
+			String time = NumberFormat.getNumberInstance().format(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start));
+			if (foundPair == null) {
+				ALConstants.logInfo("No biome from {} found (took {}ms)", biomeResult.asPrintable(), time);
+			} else {
+				ALConstants.logInfo("Found biome {} at {} (took {}ms)",
+					foundPair.getSecond().value().getClass().getSimpleName(), foundPair.getFirst(), time
+				);
+			}
+			completableFuture.complete(foundPair);
+		} catch (Throwable t) {
+			ALConstants.logError(t, "Exception while locating biomes {} around {}", biomeResult.asPrintable(), pos);
 			try {
 				completableFuture.complete(null);
 			} catch (Throwable ignore) {

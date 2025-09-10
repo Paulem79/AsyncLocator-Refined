@@ -4,10 +4,12 @@ import brightspark.asynclocator.ALConstants;
 import brightspark.asynclocator.logic.LocateCommandLogic;
 import brightspark.asynclocator.platform.Services;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.ResourceOrTagArgument;
 import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
 import net.minecraft.server.commands.LocateCommand;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,5 +40,22 @@ public class LocateCommandMixin {
 			ALConstants.logDebug("Intercepted LocateCommand#locate call");
 			LocateCommandLogic.locateAsync(sourceStack, structureResult, holderset);
 			cir.setReturnValue(1);
+	}
+
+	@Inject(
+		method = "locateBiome",
+		at = @At("HEAD"),
+		cancellable = true
+	)
+	private static void findBiomeAsync(
+		CommandSourceStack sourceStack,
+		ResourceOrTagArgument.Result<Biome> biomeResult,
+		CallbackInfoReturnable<Integer> cir
+	) {
+		if (!Services.CONFIG.locateBiomeCommandEnabled()) return;
+
+		ALConstants.logDebug("Intercepted LocateCommand#locate biome call");
+		LocateCommandLogic.locateBiomeAsync(sourceStack, biomeResult);
+		cir.setReturnValue(1);
 	}
 }

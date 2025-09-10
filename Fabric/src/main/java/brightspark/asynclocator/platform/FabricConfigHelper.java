@@ -10,6 +10,11 @@ public class FabricConfigHelper implements ConfigHelper {
 	}
 
 	@Override
+	public int biomeSearchRadius() {
+		return AsyncLocatorConfigFabric.BIOME_SEARCH_RADIUS;
+	}
+
+	@Override
 	public boolean removeOffer() {
 		return AsyncLocatorConfigFabric.REMOVE_OFFER;
 	}
@@ -32,6 +37,11 @@ public class FabricConfigHelper implements ConfigHelper {
 	@Override
 	public boolean locateCommandEnabled() {
 		return AsyncLocatorConfigFabric.FeatureToggles.LOCATE_COMMAND_ENABLED;
+	}
+
+	@Override
+	public boolean locateBiomeCommandEnabled() {
+		return AsyncLocatorConfigFabric.FeatureToggles.LOCATE_BIOME_COMMAND_ENABLED;
 	}
 
 	@Override

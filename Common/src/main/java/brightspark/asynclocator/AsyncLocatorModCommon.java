@@ -8,11 +8,13 @@ public class AsyncLocatorModCommon {
 		ConfigHelper config = Services.CONFIG;
 		ALConstants.logInfo("Configs:" +
 			"\nLocator Threads: " + config.locatorThreads() +
+			"\nBiome Search Radius: " + config.biomeSearchRadius() +
 			"\nRemove Offer: " + config.removeOffer() +
 			"\nDolphin Treasure Enabled: " + config.dolphinTreasureEnabled() +
 			"\nEye Of Ender Enabled: " + config.eyeOfEnderEnabled() +
 			"\nExploration Map Enabled: " + config.explorationMapEnabled() +
-			"\nLocate Command Enabled: " + config.locateCommandEnabled() +
+			"\nLocate Structure Command Enabled: " + config.locateCommandEnabled() +
+			"\nLocate Biome Command Enabled: " + config.locateBiomeCommandEnabled() +
 			"\nVillager Trade Enabled: " + config.villagerTradeEnabled()
 		);
 	}

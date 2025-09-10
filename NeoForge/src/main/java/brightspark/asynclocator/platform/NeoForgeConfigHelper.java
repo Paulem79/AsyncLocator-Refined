@@ -11,6 +11,11 @@ public class NeoForgeConfigHelper implements ConfigHelper {
 	}
 
 	@Override
+	public int biomeSearchRadius() {
+		return AsyncLocatorConfigNeoForge.BIOME_SEARCH_RADIUS.get();
+	}
+
+	@Override
 	public boolean removeOffer() {
 		return AsyncLocatorConfigNeoForge.REMOVE_OFFER.get();
 	}
@@ -33,6 +38,11 @@ public class NeoForgeConfigHelper implements ConfigHelper {
 	@Override
 	public boolean locateCommandEnabled() {
 		return AsyncLocatorConfigNeoForge.LOCATE_COMMAND_ENABLED.get();
+	}
+
+	@Override
+	public boolean locateBiomeCommandEnabled() {
+		return AsyncLocatorConfigNeoForge.LOCATE_BIOME_COMMAND_ENABLED.get();
 	}
 
 	@Override
