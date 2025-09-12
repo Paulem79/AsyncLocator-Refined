@@ -10,7 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stat;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.EyeOfEnder;
 import net.minecraft.world.item.EnderEyeItem;
@@ -67,7 +67,7 @@ public class EnderEyeItemMixin {
 		Level pLevel,
 		Player pPlayer,
 		InteractionHand pHand,
-		CallbackInfoReturnable<InteractionResultHolder<ItemStack>> cir,
+		CallbackInfoReturnable<InteractionResult> cir,
 		ItemStack itemstack,
 		BlockHitResult blockhitresult,
 		ServerLevel serverlevel,

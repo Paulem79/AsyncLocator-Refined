@@ -26,9 +26,9 @@ public class EnderEyeItemLogic {
 		 */
 		try {
 			Registry<net.minecraft.world.level.levelgen.structure.Structure> registry =
-				level.registryAccess().registryOrThrow(Registries.STRUCTURE);
+				level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
 			java.util.Optional<HolderSet.Named<net.minecraft.world.level.levelgen.structure.Structure>> optionalSet =
-				registry.getTag(StructureTags.EYE_OF_ENDER_LOCATED);
+				registry.get(StructureTags.EYE_OF_ENDER_LOCATED);
 			if (optionalSet.isPresent()) {
 				HolderSet<net.minecraft.world.level.levelgen.structure.Structure> holderSet = optionalSet.get();
 

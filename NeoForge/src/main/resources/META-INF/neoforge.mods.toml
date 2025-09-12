@@ -18,13 +18,13 @@ displayTest = "IGNORE_SERVER_VERSION"
 [[dependencies.asynclocator]]
 modId = "minecraft"
 type = "required"
-versionRange = "[1.21.1]"
+versionRange = "[1.21.4]"
 ordering = "NONE"
 side = "BOTH"
 
 [[dependencies.asynclocator]]
 modId = "neoforge"
 type = "required"
-versionRange = "[21.1,)"
+versionRange = "[21.4,)"
 ordering = "NONE"
 side = "BOTH"

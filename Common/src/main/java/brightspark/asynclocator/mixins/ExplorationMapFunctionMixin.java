@@ -76,13 +76,15 @@ public abstract class ExplorationMapFunctionMixin {
 	@Unique
 	private Optional<Holder<MapDecorationType>> getDecorationHolderFromKey(LootContext context) {
 		if (this.asyncLocator$decorationTypeKey == null) return Optional.empty();
-		return context.getLevel().registryAccess().registry(Registries.MAP_DECORATION_TYPE)
-				.flatMap(registry -> registry.getHolder(this.asyncLocator$decorationTypeKey));
+		return context.getLevel().registryAccess().lookup(Registries.MAP_DECORATION_TYPE)
+			.flatMap(registry -> registry.get(this.asyncLocator$decorationTypeKey));
 	}
 
 	@Unique
 	private static void asyncLocator$refreshMerchantUIIfApplicable(LootContext context) {
-		var entity = context.getParamOrNull(LootContextParams.THIS_ENTITY);
+		var entity = context.hasParameter(LootContextParams.THIS_ENTITY)
+			? context.getParameter(LootContextParams.THIS_ENTITY)
+			: null;
 		if (entity instanceof AbstractVillager merchant) {
 			if (merchant.getTradingPlayer() instanceof ServerPlayer tradingPlayer) {
 				int villagerLevel = merchant instanceof Villager villager ? villager.getVillagerData().getLevel() : 1;
@@ -124,9 +126,9 @@ public abstract class ExplorationMapFunctionMixin {
 
 		ALConstants.logDebug("Redirecting MapItem.create for async locator exploration map {}.", destination.location());
 
-		BlockPos originPos = context.getParamOrNull(LootContextParams.ORIGIN) != null
-							? BlockPos.containing(context.getParam(LootContextParams.ORIGIN))
-							: BlockPos.containing(x, level.getHeight() / 2, z);
+		BlockPos originPos = context.hasParameter(LootContextParams.ORIGIN)
+			? BlockPos.containing(context.getParameter(LootContextParams.ORIGIN))
+			: BlockPos.containing(x, level.getHeight() / 2, z);
 
 		MapItemSavedData mapData = MapItemSavedData.createFresh(
 			0,
@@ -148,13 +150,15 @@ public abstract class ExplorationMapFunctionMixin {
 		AsyncLocator.locate(serverLevel, destination, originPos, searchRadius, skipKnownStructures)
 			.thenOnServerThread(foundPos -> {
 				Component mapName = ExplorationMapFunctionLogic.getCachedName(pendingMapStack);
-				BlockPos inventoryPos = context.getParamOrNull(LootContextParams.ORIGIN) != null
-						? BlockPos.containing(context.getParam(LootContextParams.ORIGIN))
-						: null;
+				BlockPos inventoryPos = context.hasParameter(LootContextParams.ORIGIN)
+					? BlockPos.containing(context.getParameter(LootContextParams.ORIGIN))
+					: null;
 
 		// First, try to update merchant offer result directly
 		boolean merchantUpdated = false;
-			var thisEntity = context.getParamOrNull(LootContextParams.THIS_ENTITY);
+			var thisEntity = context.hasParameter(LootContextParams.THIS_ENTITY)
+				? context.getParameter(LootContextParams.THIS_ENTITY)
+				: null;
 			if (thisEntity instanceof AbstractVillager merchant) {
 				UUID targetId = CommonLogic.getTrackingUUID(pendingMapStack);
 				if (targetId != null) {
