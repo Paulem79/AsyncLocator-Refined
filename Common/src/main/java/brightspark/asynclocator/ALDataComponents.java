@@ -27,7 +27,7 @@ public class ALDataComponents {
 		if (LOCATING != null) return;
 
 		LOCATING = register("locating", builder -> builder
-			.persistent(Codec.unit(Unit.INSTANCE))
+			.persistent(Unit.CODEC)
 			.networkSynchronized(StreamCodec.unit(Unit.INSTANCE))
 		);
 

@@ -72,3 +72,8 @@ publishing {
 tasks.withType(JavaExec).configureEach {
     jvmArgs += '--add-opens=java.base/java.lang=ALL-UNNAMED'
 }
+
+// Disable failing when no tests are found
+test {
+    failOnNoDiscoveredTests = false
+}
