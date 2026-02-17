@@ -14,8 +14,21 @@ java {
 	}
 }
 
+repositories {
+	maven {
+		name = 'Parchment'
+		url = 'https://maven.parchmentmc.org'
+	}
+}
+
 neoForge {
 	version = neoforge_version
+
+	// Use Parchment mappings
+	parchment {
+		minecraftVersion = parchment_mc_version
+		mappingsVersion = parchment_version
+	}
 
 	// Automatically enable NeoForge AccessTransformers if the file exists
 	def atFile = file('src/main/resources/META-INF/accesstransformer.cfg')
